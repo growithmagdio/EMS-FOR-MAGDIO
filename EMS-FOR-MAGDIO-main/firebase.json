@@ -1,0 +1,13 @@
+{
+  "auth": {
+    "providers": {
+      "anonymous": false,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "MAGDIO",
+        "supportEmail": "support@magdioems.firebaseapp.com",
+        "authorizedRedirectUris": ["https://magdioems.firebaseapp.com", "http://localhost"]
+      }
+    }
+  }
+}

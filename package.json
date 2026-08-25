@@ -1,0 +1,13 @@
+{
+  "name": "ems-for-magdio",
+  "version": "1.0.0",
+  "description": "MAGDIO EMS - Employee & Client Management System",
+  "author": "MAGDIO",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix EMS-FOR-MAGDIO-main run dev",
+    "build": "npm --prefix EMS-FOR-MAGDIO-main run build",
+    "electron:dev": "npm --prefix EMS-FOR-MAGDIO-main run electron:dev",
+    "electron:dist": "npm --prefix EMS-FOR-MAGDIO-main run electron:dist"
+  }
+}
