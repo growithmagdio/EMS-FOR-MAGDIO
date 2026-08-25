@@ -135,18 +135,17 @@ export const AuthProvider = ({ children }) => {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               let data = docSnap.data();
-              // Force Admin role and name for permanent admin
-              if (user.email === "zdoda.ai@gmail.com") {
-                if (data.role !== "Admin" || data.name !== "Bala Murali") {
+              // Force Admin role for permanent admin
+              if (user.email === "growithmagdio@gmail.com") {
+                if (data.role !== "Admin") {
                   data.role = "Admin";
-                  data.name = "Bala Murali";
-                  await setDoc(docRef, { role: "Admin", userType: "Admin", name: "Bala Murali" }, { merge: true });
+                  await setDoc(docRef, { role: "Admin", userType: "Admin" }, { merge: true });
                 }
               }
               setUserData(data);
             } else {
               // User exists in Auth but not in Firestore (e.g., created via Console)
-              const isAdmin = user.email === "zdoda.ai@gmail.com";
+              const isAdmin = user.email === "growithmagdio@gmail.com";
               const role = isAdmin ? "Admin" : "Employee";
               const name = isAdmin ? "Bala Murali" : (user.displayName || user.email.split('@')[0]);
               const newDoc = {

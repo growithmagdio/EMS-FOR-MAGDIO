@@ -17,7 +17,7 @@ export default function Register() {
     try {
       setLoading(true);
       // If the email matches the permanent admin, force role to Admin
-      const roleToUse = data.email === "zdoda.ai@gmail.com" ? "Admin" : data.role || "Employee";
+      const roleToUse = data.email === "growithmagdio@gmail.com" ? "Admin" : data.role || "Employee";
       await signup(data.email, data.password, data.name, roleToUse, data.department);
       if (roleToUse === 'Admin') navigate('/admin/dashboard');
       else if (roleToUse === 'Client') navigate('/client/dashboard');
