@@ -30,8 +30,13 @@ const appTargetDir = path.join(outDir, 'MAGDIO-EMS-win32-x64');
 const resourcesAppDir = path.join(appTargetDir, 'resources/app');
 
 console.log('1. Cleaning output directory...');
+try { execSync('taskkill /f /im MAGDIO-EMS.exe 2>nul'); } catch (e) {}
 if (fs.existsSync(outDir)) {
-  fs.rmSync(outDir, { recursive: true, force: true });
+  try {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  } catch (e) {
+    console.log('Warning: could not clean output directory completely, continuing build...');
+  }
 }
 fs.mkdirSync(outDir, { recursive: true });
 
