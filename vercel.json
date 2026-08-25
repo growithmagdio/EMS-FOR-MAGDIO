@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm --prefix EMS-FOR-MAGDIO-main run build",
+  "outputDirectory": "EMS-FOR-MAGDIO-main/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
