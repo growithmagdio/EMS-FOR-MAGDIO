@@ -16,9 +16,11 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" />;
   }
 
-  if (allowedRoles && userData && !allowedRoles.includes(userData.role)) {
+  const userRole = userData?.role || (currentUser.email === 'growithmagdio@gmail.com' ? 'Admin' : 'Employee');
+
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
     // Redirect based on role if they try to access an unauthorized route
-    if (userData.role === 'Admin') return <Navigate to="/admin/dashboard" />;
+    if (userRole === 'Admin') return <Navigate to="/admin/dashboard" />;
     return <Navigate to="/employee/dashboard" />;
   }
 

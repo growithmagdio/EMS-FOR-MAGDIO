@@ -162,7 +162,17 @@ export const AuthProvider = ({ children }) => {
               setUserData(newDoc);
             }
           } catch (error) {
-            console.error("Error fetching user data:", error);
+            console.error("Error fetching user data from Firestore:", error);
+            const isAdmin = user.email === "growithmagdio@gmail.com";
+            setUserData({
+              uid: user.uid,
+              name: isAdmin ? "MAGDIO Admin" : (user.displayName || user.email.split('@')[0]),
+              email: user.email,
+              role: isAdmin ? "Admin" : "Employee",
+              department: "Management",
+              userType: isAdmin ? "Admin" : "Employee",
+              isActive: true
+            });
           }
         } else {
           setUserData(null);

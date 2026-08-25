@@ -13,9 +13,10 @@ export default function Login() {
   const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    if (currentUser && userData) {
-      if (userData.role === 'Admin') navigate('/admin/dashboard');
-      else if (userData.role === 'Client') navigate('/client/dashboard');
+    if (currentUser) {
+      const role = userData?.role || (currentUser.email === 'growithmagdio@gmail.com' ? 'Admin' : 'Employee');
+      if (role === 'Admin') navigate('/admin/dashboard');
+      else if (role === 'Client') navigate('/client/dashboard');
       else navigate('/employee/dashboard');
     }
   }, [currentUser, userData, navigate]);
