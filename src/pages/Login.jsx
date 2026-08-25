@@ -10,6 +10,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     if (currentUser && userData) {
@@ -22,10 +23,18 @@ export default function Login() {
   const onSubmit = async (data) => {
     try {
       setLoading(true);
+      setAuthError('');
       await login(data.email, data.password);
       // navigation handled by useEffect
     } catch (error) {
-      console.error(error);
+      console.error("Login error:", error);
+      if (error.code === 'auth/operation-not-allowed') {
+        setAuthError("Email/Password sign-in is disabled in your Firebase Console. Go to Firebase Console -> Authentication -> Sign-in method to enable it.");
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        setAuthError("Account not found or password incorrect. If you haven't registered growithmagdio@gmail.com in Firebase yet, click 'Register here' below to create your account.");
+      } else {
+        setAuthError(error.message || "Failed to log in. Please check your Firebase settings.");
+      }
     } finally {
       setLoading(false);
     }
@@ -44,7 +53,15 @@ export default function Login() {
           </p>
         </div>
 
-
+        {authError && (
+          <div className="bg-red-50 border border-red-200 text-red-900 p-4 rounded-xl text-sm flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-800">Login Error</p>
+              <p className="text-xs text-red-700 mt-1">{authError}</p>
+            </div>
+          </div>
+        )}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
 
