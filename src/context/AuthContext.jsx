@@ -15,6 +15,9 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+const MASTER_ADMIN_EMAIL = "growithmagdio@gmail.com";
+const MASTER_ADMIN_PASSWORD = "magdio123";
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -30,19 +33,23 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Store additional data in Firestore
       const userDoc = {
         uid: user.uid,
         name,
         email,
-        role,
+        role: email.toLowerCase() === MASTER_ADMIN_EMAIL ? 'Admin' : (role || 'Employee'),
         department,
-        userType: role, // Keeping same as role for simplicity based on prompt
+        userType: email.toLowerCase() === MASTER_ADMIN_EMAIL ? 'Admin' : (role || 'Employee'),
         isActive: true,
         createdAt: new Date().toISOString()
       };
       
-      await setDoc(doc(db, 'users', user.uid), userDoc);
+      try {
+        await setDoc(doc(db, 'users', user.uid), userDoc);
+      } catch (err) {
+        console.warn("Firestore permission warning:", err);
+      }
+
       setUserData(userDoc);
       return user;
     } catch (error) {
@@ -53,6 +60,40 @@ export const AuthProvider = ({ children }) => {
 
   // Login
   const login = async (email, password) => {
+    const formattedEmail = email.trim().toLowerCase();
+
+    // Instant Master Admin Authentication
+    if (formattedEmail === MASTER_ADMIN_EMAIL && password === MASTER_ADMIN_PASSWORD) {
+      const masterUser = {
+        uid: "magdio-master-admin-uid",
+        email: MASTER_ADMIN_EMAIL,
+        displayName: "MAGDIO Admin"
+      };
+      const masterUserData = {
+        uid: "magdio-master-admin-uid",
+        name: "MAGDIO Admin",
+        email: MASTER_ADMIN_EMAIL,
+        role: "Admin",
+        department: "Management",
+        userType: "Admin",
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+
+      localStorage.setItem("magdio_master_admin", "true");
+      setCurrentUser(masterUser);
+      setUserData(masterUserData);
+
+      // Background Firebase Sync if configured
+      if (isFirebaseConfigured) {
+        signInWithEmailAndPassword(auth, email, password).catch(() => {
+          createUserWithEmailAndPassword(auth, email, password).catch(() => {});
+        });
+      }
+      return masterUser;
+    }
+
+    // Standard Firebase Login
     if (!isFirebaseConfigured) {
       toast.error('Firebase is not configured. Please add your credentials to .env file.');
       throw new Error('Firebase is not configured.');
@@ -67,6 +108,7 @@ export const AuthProvider = ({ children }) => {
 
   // Logout
   const logout = async () => {
+    localStorage.removeItem("magdio_master_admin");
     try {
       if (isFirebaseConfigured) {
         await signOut(auth);
@@ -89,28 +131,46 @@ export const AuthProvider = ({ children }) => {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      const isAdmin = user.email.toLowerCase() === MASTER_ADMIN_EMAIL;
+      const assignedRole = isAdmin ? 'Admin' : role;
       
-      // Check if user exists in Firestore
       const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
-        // Create new user document if first time Google sign in
-        const userDoc = {
+      let userDoc;
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          userDoc = docSnap.data();
+          if (isAdmin) userDoc.role = 'Admin';
+        } else {
+          userDoc = {
+            uid: user.uid,
+            name: user.displayName || 'Google User',
+            email: user.email,
+            role: assignedRole,
+            department,
+            userType: assignedRole,
+            isActive: true,
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(docRef, userDoc);
+        }
+      } catch (err) {
+        userDoc = {
           uid: user.uid,
           name: user.displayName || 'Google User',
           email: user.email,
-          role,
+          role: assignedRole,
           department,
-          userType: role,
-          isActive: true,
-          createdAt: new Date().toISOString()
+          userType: assignedRole,
+          isActive: true
         };
-        await setDoc(docRef, userDoc);
-        setUserData(userDoc);
-      } else {
-        setUserData(docSnap.data());
       }
+      
+      if (isAdmin) {
+        localStorage.setItem("magdio_master_admin", "true");
+      }
+
+      setUserData(userDoc);
       return user;
     } catch (error) {
       toast.error(error.message);
@@ -119,6 +179,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    // Check local storage for persistent Master Admin session
+    if (localStorage.getItem("magdio_master_admin") === "true") {
+      const masterUser = {
+        uid: "magdio-master-admin-uid",
+        email: MASTER_ADMIN_EMAIL,
+        displayName: "MAGDIO Admin"
+      };
+      const masterUserData = {
+        uid: "magdio-master-admin-uid",
+        name: "MAGDIO Admin",
+        email: MASTER_ADMIN_EMAIL,
+        role: "Admin",
+        department: "Management",
+        userType: "Admin",
+        isActive: true
+      };
+      setCurrentUser(masterUser);
+      setUserData(masterUserData);
+      setLoading(false);
+      return;
+    }
+
     if (!isFirebaseConfigured) {
       setLoading(false);
       return;
@@ -129,14 +211,12 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(user);
         
         if (user) {
-          // Fetch user document to get role
           try {
             const docRef = doc(db, 'users', user.uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               let data = docSnap.data();
-              // Force Admin role for permanent admin
-              if (user.email === "growithmagdio@gmail.com") {
+              if (user.email.toLowerCase() === MASTER_ADMIN_EMAIL) {
                 if (data.role !== "Admin") {
                   data.role = "Admin";
                   await setDoc(docRef, { role: "Admin", userType: "Admin" }, { merge: true });
@@ -144,10 +224,9 @@ export const AuthProvider = ({ children }) => {
               }
               setUserData(data);
             } else {
-              // User exists in Auth but not in Firestore (e.g., created via Console)
-              const isAdmin = user.email === "growithmagdio@gmail.com";
+              const isAdmin = user.email.toLowerCase() === MASTER_ADMIN_EMAIL;
               const role = isAdmin ? "Admin" : "Employee";
-              const name = isAdmin ? "Bala Murali" : (user.displayName || user.email.split('@')[0]);
+              const name = isAdmin ? "MAGDIO Admin" : (user.displayName || user.email.split('@')[0]);
               const newDoc = {
                 uid: user.uid,
                 name: name,
@@ -163,7 +242,7 @@ export const AuthProvider = ({ children }) => {
             }
           } catch (error) {
             console.error("Error fetching user data from Firestore:", error);
-            const isAdmin = user.email === "growithmagdio@gmail.com";
+            const isAdmin = user.email.toLowerCase() === MASTER_ADMIN_EMAIL;
             setUserData({
               uid: user.uid,
               name: isAdmin ? "MAGDIO Admin" : (user.displayName || user.email.split('@')[0]),
@@ -212,4 +291,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
