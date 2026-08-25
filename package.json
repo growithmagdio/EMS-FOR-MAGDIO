@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix EMS-FOR-MAGDIO-main run dev",
-    "build": "npm --prefix EMS-FOR-MAGDIO-main run build",
+    "build": "npm --prefix EMS-FOR-MAGDIO-main install && npm --prefix EMS-FOR-MAGDIO-main run build",
     "electron:dev": "npm --prefix EMS-FOR-MAGDIO-main run electron:dev",
     "electron:dist": "npm --prefix EMS-FOR-MAGDIO-main run electron:dist"
   }
