@@ -40,17 +40,7 @@ export default function Register() {
           <p className="mt-2 text-sm text-gray-600">Join the MAGDIO Reporting System</p>
         </div>
 
-        {!isFirebaseConfigured && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-xl text-sm flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-amber-800">Firebase Not Configured</p>
-              <p className="text-xs text-amber-700 mt-1">
-                Please create a <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-amber-900">.env</code> file in the project folder with your Firebase configuration variables.
-              </p>
-            </div>
-          </div>
-        )}
+
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
 
