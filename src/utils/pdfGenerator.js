@@ -1,6 +1,63 @@
 import { jsPDF } from 'jspdf';
 
 /**
+ * Loads an image from a URL, relative path, or data URI and converts it to a PNG base64 string.
+ * Supports SVGs by rendering them to an offscreen high-DPI HTML canvas.
+ * 
+ * @param {string} src 
+ * @returns {Promise<string|null>}
+ */
+async function getBase64Image(src) {
+  if (!src) return null;
+  if (typeof src === 'string' && src.startsWith('data:image')) {
+    return src;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const scale = 4; // High DPI for crystal-clear PDF print resolution
+          const w = (img.naturalWidth || img.width || 48) * scale;
+          const h = (img.naturalHeight || img.height || 48) * scale;
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/png');
+          resolve(dataUrl);
+        } catch (canvasErr) {
+          console.warn('[pdfGenerator] Canvas conversion failed:', canvasErr);
+          resolve(null);
+        }
+      };
+      img.onerror = (e) => {
+        console.warn('[pdfGenerator] Failed to load logo from src:', src, e);
+        resolve(null);
+      };
+      img.src = src;
+    } catch (err) {
+      console.warn('[pdfGenerator] Image load error:', err);
+      resolve(null);
+    }
+  });
+}
+
+function drawBrandFallback(doc, x, y) {
+  doc.setFillColor(134, 59, 255); // #863bff (MAGDIO Brand Purple)
+  doc.roundedRect(x, y, 14, 14, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('M', x + 7, y + 9.5, { align: 'center' });
+}
+
+/**
  * Generates and downloads a clean, professional, high-resolution A4 business PDF
  * for any invoice directly using jsPDF vector graphics and typography.
  * 
@@ -70,24 +127,36 @@ export async function downloadInvoicePDF(invoice) {
     // A. HEADER: BRANDING & INVOICE META
     // ==========================================
     
-    // Brand Logo Icon (Blue rounded box with white 'M')
-    doc.setFillColor(37, 99, 235); // #2563eb
-    doc.roundedRect(leftMargin, currentY, 12, 12, 2.5, 2.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('M', leftMargin + 6, currentY + 8.5, { align: 'center' });
+    // Load and render the official MAGDIO Logo
+    const logoSrc = invoice.companyLogo || invoice.logo || '/favicon.svg';
+    let logoDataUrl = null;
+    try {
+      logoDataUrl = await getBase64Image(logoSrc);
+    } catch {
+      logoDataUrl = null;
+    }
+
+    if (logoDataUrl) {
+      try {
+        doc.addImage(logoDataUrl, 'PNG', leftMargin, currentY, 14, 14);
+      } catch (imgErr) {
+        console.warn('[pdfGenerator] Error adding logo image to PDF:', imgErr);
+        drawBrandFallback(doc, leftMargin, currentY);
+      }
+    } else {
+      drawBrandFallback(doc, leftMargin, currentY);
+    }
 
     // Company Name & Subtitle
     doc.setTextColor(17, 24, 39); // #111827
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.text('MAGDIO', leftMargin + 15, currentY + 5.5);
+    doc.setFontSize(16);
+    doc.text('MAGDIO', leftMargin + 17, currentY + 5.5);
 
-    doc.setTextColor(37, 99, 235);
+    doc.setTextColor(134, 59, 255); // #863bff MAGDIO brand purple
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('ENTERPRISE SOLUTIONS', leftMargin + 15, currentY + 9.5);
+    doc.text('ENTERPRISE SOLUTIONS', leftMargin + 17, currentY + 10);
 
     // Right Side: Big "INVOICE" Title & Number
     doc.setTextColor(17, 24, 39);
@@ -95,12 +164,12 @@ export async function downloadInvoicePDF(invoice) {
     doc.setFontSize(20);
     doc.text('INVOICE', rightMargin, currentY + 5.5, { align: 'right' });
 
-    doc.setTextColor(37, 99, 235);
+    doc.setTextColor(134, 59, 255);
     doc.setFont('courier', 'bold');
     doc.setFontSize(10);
     doc.text(`#${invoiceNumber}`, rightMargin, currentY + 11, { align: 'right' });
 
-    currentY += 15;
+    currentY += 17;
 
     // Company Subtext & Invoice Dates Row
     doc.setTextColor(107, 114, 128); // #6b7280

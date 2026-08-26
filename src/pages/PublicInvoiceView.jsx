@@ -175,12 +175,23 @@ export default function PublicInvoiceView() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-gray-200 pb-8">
             <div>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <img 
+                  src="/favicon.svg" 
+                  alt="MAGDIO Logo" 
+                  className="w-12 h-12 rounded-2xl object-contain shadow-md shadow-purple-500/20"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      e.currentTarget.nextElementSibling.classList.remove('hidden');
+                    }
+                  }}
+                />
+                <div className="w-12 h-12 bg-purple-600 rounded-2xl hidden items-center justify-center shadow-lg shadow-purple-500/20">
                   <span className="text-white font-black text-2xl tracking-tighter">M</span>
                 </div>
                 <div>
                   <h1 className="text-2xl font-black tracking-tight text-gray-900">MAGDIO</h1>
-                  <p className="text-xs uppercase font-bold tracking-widest text-blue-600">Enterprise Solutions</p>
+                  <p className="text-xs uppercase font-bold tracking-widest text-purple-600">Enterprise Solutions</p>
                 </div>
               </div>
 
