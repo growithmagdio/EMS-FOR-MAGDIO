@@ -129,24 +129,7 @@ export default function InvoicePreviewModal({
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-gray-200 pb-8">
             <div>
               <div className="flex items-center gap-3">
-                <img 
-                  src="/favicon.svg" 
-                  alt="MAGDIO Logo" 
-                  className="w-12 h-12 rounded-2xl object-contain shadow-md shadow-purple-500/20 print:shadow-none"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    if (e.currentTarget.nextElementSibling) {
-                      e.currentTarget.nextElementSibling.classList.remove('hidden');
-                    }
-                  }}
-                />
-                <div className="w-12 h-12 bg-purple-600 rounded-2xl hidden items-center justify-center shadow-lg shadow-purple-500/20 print:shadow-none">
-                  <span className="text-white font-black text-2xl tracking-tighter">M</span>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight text-gray-900">MAGDIO</h1>
-                  <p className="text-xs uppercase font-bold tracking-widest text-purple-600">Enterprise Solutions</p>
-                </div>
+                <img src="/logo.png" alt="MAGDIO" className="h-12 object-contain p-2 bg-[#0b0e1b] rounded-2xl shadow-md print:shadow-none" />
               </div>
 
               <div className="mt-4 text-xs text-gray-500 space-y-1">

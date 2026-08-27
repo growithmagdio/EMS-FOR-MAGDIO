@@ -33,11 +33,11 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-3xl">M</span>
+          <div className="flex justify-center mb-4">
+            <img src="/logo.png" alt="MAGDIO - The AI Growth Studio" className="h-14 object-contain p-2 bg-[#0b0e1b] rounded-2xl shadow-xl" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Create an account</h2>
-          <p className="mt-2 text-sm text-gray-600">Join the MAGDIO Reporting System</p>
+          <h2 className="mt-2 text-2xl font-extrabold text-gray-900">Create an account</h2>
+          <p className="mt-1 text-sm text-gray-600">Join the MAGDIO Reporting System</p>
         </div>
 
 

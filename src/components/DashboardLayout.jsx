@@ -76,16 +76,13 @@ export default function DashboardLayout() {
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-gray-200 shrink-0 bg-[#0b0e1b]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">M</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900 tracking-tight">MAGDIO</span>
+            <img src="/logo.png" alt="MAGDIO" className="h-9 object-contain" />
           </div>
           <button 
             onClick={closeMobileMenu}
-            className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+            className="lg:hidden p-2 text-gray-400 hover:bg-slate-800 rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>

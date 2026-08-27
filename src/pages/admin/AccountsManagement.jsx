@@ -1244,8 +1244,8 @@ export default function AccountsManagement() {
             {/* Header branding for print */}
             <div className="flex justify-between items-start border-b border-gray-200 pb-6">
               <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">M</div>
+                <div className="flex items-center gap-3">
+                  <img src="/logo.png" alt="MAGDIO" className="h-9 object-contain p-1.5 bg-[#0b0e1b] rounded-xl shadow-sm" />
                   <h2 className="text-xl font-black text-gray-900">MAGDIO Financial Systems</h2>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Official Accounting & Performance Statement</p>

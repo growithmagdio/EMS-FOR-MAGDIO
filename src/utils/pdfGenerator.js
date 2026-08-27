@@ -156,7 +156,7 @@ export async function downloadInvoicePDF(invoice) {
     doc.setTextColor(134, 59, 255); // #863bff MAGDIO brand purple
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('ENTERPRISE SOLUTIONS', leftMargin + 17, currentY + 10);
+    doc.text('THE AI GROWTH STUDIO', leftMargin + 17, currentY + 10);
 
     // Right Side: Big "INVOICE" Title & Number
     doc.setTextColor(17, 24, 39);

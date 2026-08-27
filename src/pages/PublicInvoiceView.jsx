@@ -127,9 +127,7 @@ export default function PublicInvoiceView() {
         {/* Top Floating Action Bar */}
         <div className="bg-white/90 backdrop-blur-md px-6 py-3.5 rounded-2xl shadow-sm border border-gray-200/80 flex flex-wrap justify-between items-center gap-4 print:hidden">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow">
-              <span className="text-white font-bold text-base">M</span>
-            </div>
+            <img src="/logo.png" alt="MAGDIO" className="h-8 object-contain p-1 bg-[#0b0e1b] rounded-lg shadow-sm" />
             <div>
               <span className="font-bold text-gray-900 text-sm">Invoice #{invoice.invoiceNumber}</span>
               <span className="text-xs text-gray-500 block">From MAGDIO Software Solutions</span>
@@ -175,24 +173,7 @@ export default function PublicInvoiceView() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-gray-200 pb-8">
             <div>
               <div className="flex items-center gap-3">
-                <img 
-                  src="/favicon.svg" 
-                  alt="MAGDIO Logo" 
-                  className="w-12 h-12 rounded-2xl object-contain shadow-md shadow-purple-500/20"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    if (e.currentTarget.nextElementSibling) {
-                      e.currentTarget.nextElementSibling.classList.remove('hidden');
-                    }
-                  }}
-                />
-                <div className="w-12 h-12 bg-purple-600 rounded-2xl hidden items-center justify-center shadow-lg shadow-purple-500/20">
-                  <span className="text-white font-black text-2xl tracking-tighter">M</span>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tight text-gray-900">MAGDIO</h1>
-                  <p className="text-xs uppercase font-bold tracking-widest text-purple-600">Enterprise Solutions</p>
-                </div>
+                <img src="/logo.png" alt="MAGDIO" className="h-12 object-contain p-2 bg-[#0b0e1b] rounded-2xl shadow-md" />
               </div>
 
               <div className="mt-4 text-xs text-gray-500 space-y-1">

@@ -78,12 +78,11 @@ export default function PublicProjectStatus() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
       {/* Brand Header */}
-      <div className="mb-12 text-center">
-        <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-4">
-          <span className="text-white font-bold text-3xl">M</span>
+      <div className="mb-8 text-center">
+        <div className="flex justify-center mb-3">
+          <img src="/logo.png" alt="MAGDIO - The AI Growth Studio" className="h-16 object-contain p-2 bg-[#0b0e1b] rounded-2xl shadow-lg" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">MAGDIO</h1>
-        <p className="text-sm text-gray-500">Client Portal</p>
+        <p className="text-sm font-medium text-gray-500">Client Portal</p>
       </div>
 
       {/* Main Dashboard Card */}
