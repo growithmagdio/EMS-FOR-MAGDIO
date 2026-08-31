@@ -19,6 +19,7 @@ export default function EmployeeTasks() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

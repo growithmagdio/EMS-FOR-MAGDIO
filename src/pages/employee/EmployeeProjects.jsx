@@ -32,11 +32,10 @@ export default function EmployeeProjects() {
       setProjects(projList);
 
       // Fetch all employees for request form
-      const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
-      const empSnap = await getDocs(empQ);
+      const empSnap = await getDocs(collection(db, 'users'));
       setEmployees(empSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(emp => !emp.isDeleted && emp.isActive !== false)
+        .filter(emp => !emp.isDeleted && emp.isActive !== false && emp.email?.toLowerCase() !== 'growithmagdio@gmail.com' && emp.role?.toLowerCase() !== 'admin')
       );
     } catch (error) {
       console.error("Error fetching projects:", error);
