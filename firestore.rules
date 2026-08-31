@@ -2,94 +2,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Helper function
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isMasterAdmin() {
-      return isAuthenticated() && 
-             request.auth.token.email != null && 
-             request.auth.token.email.lower() == 'growithmagdio@gmail.com';
-    }
-
-    function isAdmin() {
-      return isMasterAdmin() || 
-             (isAuthenticated() && 
-              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-              (
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'Admin' ||
-                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'admin'
-              ));
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
     // USERS COLLECTION
     match /users/{userId} {
-      // Admins can perform any operation on users
-      // Authenticated users can read employee profiles (needed for directory, chat, task lists)
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && (isAdmin() || isOwner(userId));
-      allow update: if isAdmin() || (
-        isOwner(userId) && 
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'userType', 'isDeleted']))
-      );
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // PROJECTS COLLECTION
     match /projects/{projectId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // TASKS COLLECTION
     match /tasks/{taskId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAdmin() || (
-        isAuthenticated() && 
-        resource.data.assignedEmployeeId == request.auth.uid &&
-        resource.data.isPersonal == true
-      );
+      allow read, write: if isAuthenticated();
     }
 
     // DAILY REPORTS COLLECTION
     match /dailyReports/{reportId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     // LEAVE REQUESTS COLLECTION
     match /leaveRequests/{requestId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
-      allow delete: if isAdmin() || (
-        isAuthenticated() && 
-        resource.data.employeeId == request.auth.uid
-      );
+      allow read, write: if isAuthenticated();
     }
 
     // WFH REQUESTS COLLECTION
     match /wfhRequests/{requestId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
-      allow delete: if isAdmin() || (
-        isAuthenticated() && 
-        resource.data.employeeId == request.auth.uid
-      );
+      allow read, write: if isAuthenticated();
     }
 
     // TEAM CHAT COLLECTION
@@ -97,18 +42,17 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // SENSITIVE SISTER COLLECTIONS (CLIENTS, INVOICES, ACCOUNTS)
+    // SENSITIVE COLLECTIONS
     match /clients/{clientId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /invoices/{invoiceId} {
-      allow read: if isAuthenticated() || resource.data.isPublic == true;
-      allow write: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /accounts/{accountId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
   }
 }
