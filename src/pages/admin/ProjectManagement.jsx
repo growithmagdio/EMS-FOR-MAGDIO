@@ -55,19 +55,23 @@ export default function ProjectManagement() {
   const onSubmit = async (data) => {
     try {
       // Convert multi-select assignedEmployees to array if it's not already
-      const assigned = Array.isArray(data.assignedEmployees) ? data.assignedEmployees : [data.assignedEmployees].filter(Boolean);
+      const assigned = Array.isArray(data.assignedEmployees) 
+        ? data.assignedEmployees 
+        : (data.assignedEmployees ? [data.assignedEmployees] : []);
       
       const projectData = {
-        name: data.name,
-        client: data.client || 'Internal',
-        description: data.description,
-        startDate: data.startDate,
-        deadline: data.deadline,
-        status: data.status,
+        name: data.name ? String(data.name).trim() : 'Untitled Project',
+        client: data.client ? String(data.client).trim() : 'Internal Project',
+        description: data.description ? String(data.description).trim() : '',
+        startDate: data.startDate || new Date().toISOString().split('T')[0],
+        deadline: data.deadline || new Date().toISOString().split('T')[0],
+        status: data.status || 'Planning',
         completionPercentage: Number(data.completionPercentage || 0),
         assignedEmployees: assigned,
         updatedAt: new Date().toISOString()
       };
+
+      console.log("PROJECT SUBMIT PAYLOAD", projectData);
 
       if (editingProject) {
         await updateDocument('projects', editingProject.id, projectData);
@@ -82,8 +86,12 @@ export default function ProjectManagement() {
       setEditingProject(null);
       await fetchProjectsAndEmployees();
     } catch (error) {
-      console.error("Error saving project:", error);
-      toast.error("Failed to save project");
+      console.error("CREATE PROJECT FIREBASE ERROR:", {
+        code: error?.code,
+        message: error?.message,
+        error
+      });
+      toast.error(error?.message || "Failed to save project");
     }
   };
 

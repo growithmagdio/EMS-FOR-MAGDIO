@@ -22,91 +22,127 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      try {
-        // Total Employees
-        const empSnap = await getDocs(collection(db, 'users'));
-        const totalEmployees = empSnap.docs.filter(d => !d.data().isDeleted && d.data().email?.toLowerCase() !== 'growithmagdio@gmail.com' && d.data().role?.toLowerCase() !== 'admin').length;
+      let totalEmployees = 0;
+      let reportsToday = 0;
+      let pendingReports = 0;
+      let leaveRequests = 0;
+      let wfhRequests = 0;
+      let avgCompletion = 0;
+      let totalHours = 0;
+      let activeProjects = 0;
+      let pendingTasks = 0;
+      let totalInvoiced = 0;
+      let totalRevenue = 0;
+      let pendingInvoices = 0;
 
-        // Reports Today
+      // 1. Total Employees
+      try {
+        const empSnap = await getDocs(collection(db, 'users'));
+        totalEmployees = empSnap.docs.filter(d => {
+          const data = d.data();
+          return !data.isDeleted && 
+                 data.email?.toLowerCase() !== 'growithmagdio@gmail.com' && 
+                 data.role?.toLowerCase() !== 'admin';
+        }).length;
+      } catch (err) {
+        console.error("Error fetching total employees for dashboard:", err);
+      }
+
+      // 2. Reports Today
+      try {
         const today = new Date().toISOString().split('T')[0];
         const repQ = query(collection(db, 'dailyReports'), where('reportDate', '==', today));
         const repSnap = await getDocs(repQ);
-        const reportsToday = repSnap.size;
+        reportsToday = repSnap.size;
 
         let totalCompletion = 0;
-        let totalHours = 0;
         repSnap.forEach(doc => {
           const data = doc.data();
           totalCompletion += (data.completionPercentage || 0);
           totalHours += (data.timeTaken || 0);
         });
-        
-        const avgCompletion = reportsToday > 0 ? Math.round(totalCompletion / reportsToday) : 0;
-        const pendingReports = Math.max(0, totalEmployees - reportsToday);
 
-        // Pending Leaves
+        avgCompletion = reportsToday > 0 ? Math.round(totalCompletion / reportsToday) : 0;
+        pendingReports = Math.max(0, totalEmployees - reportsToday);
+      } catch (err) {
+        console.error("Error fetching daily reports for dashboard:", err);
+      }
+
+      // 3. Pending Leaves
+      try {
         const leaveQ = query(collection(db, 'leaveRequests'), where('status', '==', 'Pending'));
         const leaveSnap = await getDocs(leaveQ);
-        const leaveRequests = leaveSnap.size;
+        leaveRequests = leaveSnap.size;
+      } catch (err) {
+        console.error("Error fetching leave requests for dashboard:", err);
+      }
 
-        // Pending WFH
+      // 4. Pending WFH
+      try {
         const wfhQ = query(collection(db, 'wfhRequests'), where('status', '==', 'Pending'));
         const wfhSnap = await getDocs(wfhQ);
-        const wfhRequests = wfhSnap.size;
-
-        // Active Projects
-        const projQ = query(collection(db, 'projects'));
-        const projSnap = await getDocs(projQ);
-        const activeProjects = projSnap.docs.filter(d => d.data().status === 'In Progress' && !d.data().isDeleted).length;
-
-        // Pending Tasks
-        const taskQ = query(collection(db, 'tasks'));
-        const taskSnap = await getDocs(taskQ);
-        const pendingTasks = taskSnap.docs.filter(d => d.data().status !== 'Done' && !d.data().isDeleted).length;
-
-        // Invoices Stats
-        let totalInvoiced = 0;
-        let totalRevenue = 0;
-        let pendingInvoices = 0;
-
-        try {
-          const invSnap = await getDocs(collection(db, 'invoices'));
-          invSnap.docs.forEach(doc => {
-            const data = doc.data();
-            if (!data.isDeleted && data.status !== 'Cancelled') {
-              const total = Number(data.totalAmount || 0);
-              const paid = Number(data.amountPaid || 0);
-              const balance = Number(data.balanceDue ?? (total - paid));
-              totalInvoiced += total;
-              totalRevenue += paid;
-              if (balance > 0) {
-                pendingInvoices += 1;
-              }
-            }
-          });
-        } catch (invErr) {
-          console.error("Error fetching invoice stats:", invErr);
-        }
-
-        setStats({ 
-          totalEmployees, 
-          reportsToday, 
-          pendingReports,
-          leaveRequests, 
-          wfhRequests, 
-          avgCompletion,
-          totalHours,
-          activeProjects,
-          pendingTasks,
-          totalInvoiced,
-          totalRevenue,
-          pendingInvoices
-        });
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-      } finally {
-        setLoading(false);
+        wfhRequests = wfhSnap.size;
+      } catch (err) {
+        console.error("Error fetching wfh requests for dashboard:", err);
       }
+
+      // 5. Active Projects (count any project not Completed or Cancelled)
+      try {
+        const projSnap = await getDocs(collection(db, 'projects'));
+        activeProjects = projSnap.docs.filter(d => {
+          const data = d.data();
+          return !data.isDeleted && data.status !== 'Completed' && data.status !== 'Cancelled';
+        }).length;
+      } catch (err) {
+        console.error("Error fetching projects for dashboard:", err);
+      }
+
+      // 6. Pending Tasks (count tasks not Done)
+      try {
+        const taskSnap = await getDocs(collection(db, 'tasks'));
+        pendingTasks = taskSnap.docs.filter(d => {
+          const data = d.data();
+          return !data.isDeleted && data.status !== 'Done' && data.status !== 'Completed';
+        }).length;
+      } catch (err) {
+        console.error("Error fetching tasks for dashboard:", err);
+      }
+
+      // 7. Invoices Stats
+      try {
+        const invSnap = await getDocs(collection(db, 'invoices'));
+        invSnap.docs.forEach(doc => {
+          const data = doc.data();
+          if (!data.isDeleted && data.status !== 'Cancelled') {
+            const total = Number(data.totalAmount || 0);
+            const paid = Number(data.amountPaid || 0);
+            const balance = Number(data.balanceDue ?? (total - paid));
+            totalInvoiced += total;
+            totalRevenue += paid;
+            if (balance > 0) {
+              pendingInvoices += 1;
+            }
+          }
+        });
+      } catch (invErr) {
+        console.error("Error fetching invoice stats for dashboard:", invErr);
+      }
+
+      setStats({ 
+        totalEmployees, 
+        reportsToday, 
+        pendingReports,
+        leaveRequests, 
+        wfhRequests, 
+        avgCompletion,
+        totalHours,
+        activeProjects,
+        pendingTasks,
+        totalInvoiced,
+        totalRevenue,
+        pendingInvoices
+      });
+      setLoading(false);
     };
     fetchStats();
   }, []);
