@@ -49,23 +49,29 @@ export default function MyReports() {
 
   const onSubmit = async (data) => {
     try {
+      if (!currentUser) {
+        toast.error("User session expired. Please log in again.");
+        return;
+      }
       const task = assignedTasks.find(t => t.id === data.taskId) || { id: 'General', title: 'General Task', projectId: '', projectName: '' };
       
       const reportData = {
         employeeId: currentUser.uid,
-        employeeName: userData?.name || currentUser.displayName || 'Employee',
+        employeeName: userData?.name || currentUser.displayName || currentUser.email?.split('@')[0] || 'Employee',
         reportDate: today,
-        taskId: task.id,
-        taskName: task.title,
-        projectId: task.projectId,
-        projectName: task.projectName,
-        description: data.description,
-        completionPercentage: Number(data.completionPercentage),
-        hoursWorked: Number(data.hoursWorked),
-        status: data.status,
-        blockers: data.blockers,
-        tomorrowPlan: data.tomorrowPlan,
-        remarks: data.remarks
+        taskId: task.id || 'General',
+        taskName: task.title || 'General Task',
+        projectId: task.projectId || '',
+        projectName: task.projectName || '',
+        description: data.description || data.tomorrowPlan || 'Work update',
+        taskDescription: data.description || data.tomorrowPlan || 'Work update',
+        completionPercentage: Number(data.completionPercentage) || 0,
+        hoursWorked: Number(data.hoursWorked) || 0,
+        timeTaken: Number(data.hoursWorked) || 0,
+        status: data.status || 'In Progress',
+        blockers: data.blockers || '',
+        tomorrowPlan: data.tomorrowPlan || '',
+        remarks: data.remarks || ''
       };
 
       if (editingReport) {

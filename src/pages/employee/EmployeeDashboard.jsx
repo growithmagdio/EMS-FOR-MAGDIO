@@ -102,56 +102,66 @@ export default function EmployeeDashboard() {
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-      const completionNum = Number(data.completionPercentage);
-      const timeNum = Number(data.timeTaken);
+      if (!currentUser) {
+        toast.error("User session expired. Please log in again.");
+        return;
+      }
+
+      const completionNum = Number(data.completionPercentage) || 0;
+      const timeNum = Number(data.timeTaken) || 0;
+
+      const safeTaskName = data.taskName || 'Daily Work Report';
+      const safeTaskDesc = data.taskDescription || data.tomorrowPlan || 'Work update';
 
       if (existingReport) {
-        await updateDoc(doc(db, 'dailyReports', existingReport.id), {
+        const updatePayload = {
           taskId: data.taskId || null,
-          taskName: data.taskName,
-          taskDescription: data.taskDescription,
+          taskName: safeTaskName,
+          taskDescription: safeTaskDesc,
           completionPercentage: completionNum,
           timeTaken: timeNum,
-          status: data.status,
+          status: data.status || 'In Progress',
           blockers: data.blockers || '',
           tomorrowPlan: data.tomorrowPlan || '',
           remarks: data.remarks || '',
           updatedAt: new Date().toISOString(),
           version: (existingReport.version || 1) + 1
-        });
+        };
 
-        // Also sync linked task status if selected
+        await updateDoc(doc(db, 'dailyReports', existingReport.id), updatePayload);
+
+        // Sync linked task status if selected
         if (data.taskId) {
-          await updateDoc(doc(db, 'tasks', data.taskId), {
-            progressPercentage: completionNum,
-            status: completionNum === 100 ? 'Done' : (data.status === 'Completed' ? 'Done' : data.status),
-            latestUpdate: data.taskDescription,
-            updatedAt: new Date().toISOString()
-          });
+          try {
+            await updateDoc(doc(db, 'tasks', data.taskId), {
+              progressPercentage: completionNum,
+              status: completionNum === 100 ? 'Done' : (data.status === 'Completed' ? 'Done' : data.status),
+              latestUpdate: safeTaskDesc,
+              updatedAt: new Date().toISOString()
+            });
+          } catch (taskErr) {
+            console.warn("Could not sync task status:", taskErr);
+          }
         }
 
         toast.success("Report updated successfully!");
         setExistingReport(prev => ({ 
           ...prev, 
-          ...data, 
-          completionPercentage: completionNum,
-          timeTaken: timeNum,
-          version: (prev.version || 1) + 1, 
-          updatedAt: new Date().toISOString() 
+          ...updatePayload
         }));
         setIsEditing(false);
       } else {
         const newReport = {
           employeeId: currentUser.uid,
-          employeeName: userData.name,
-          role: userData.role,
-          department: userData.department,
+          employeeName: userData?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Employee',
+          role: userData?.role || 'Employee',
+          department: userData?.department || 'General',
           taskId: data.taskId || null,
-          taskName: data.taskName,
-          taskDescription: data.taskDescription,
+          taskName: safeTaskName,
+          taskDescription: safeTaskDesc,
           completionPercentage: completionNum,
           timeTaken: timeNum,
-          status: data.status,
+          status: data.status || 'In Progress',
           blockers: data.blockers || '',
           tomorrowPlan: data.tomorrowPlan || '',
           remarks: data.remarks || '',
@@ -160,16 +170,21 @@ export default function EmployeeDashboard() {
           updatedAt: new Date().toISOString(),
           version: 1
         };
+
         const docRef = await addDoc(collection(db, 'dailyReports'), newReport);
 
-        // Also sync linked task status if selected
+        // Sync linked task status if selected
         if (data.taskId) {
-          await updateDoc(doc(db, 'tasks', data.taskId), {
-            progressPercentage: completionNum,
-            status: completionNum === 100 ? 'Done' : (data.status === 'Completed' ? 'Done' : data.status),
-            latestUpdate: data.taskDescription,
-            updatedAt: new Date().toISOString()
-          });
+          try {
+            await updateDoc(doc(db, 'tasks', data.taskId), {
+              progressPercentage: completionNum,
+              status: completionNum === 100 ? 'Done' : (data.status === 'Completed' ? 'Done' : data.status),
+              latestUpdate: safeTaskDesc,
+              updatedAt: new Date().toISOString()
+            });
+          } catch (taskErr) {
+            console.warn("Could not sync task status:", taskErr);
+          }
         }
 
         toast.success("Report submitted successfully!");
@@ -178,8 +193,8 @@ export default function EmployeeDashboard() {
         reset();
       }
     } catch (error) {
-      toast.error("Failed to submit report");
-      console.error(error);
+      console.error("Error submitting report:", error);
+      toast.error(error?.message || "Failed to submit report");
     } finally {
       setLoading(false);
     }
