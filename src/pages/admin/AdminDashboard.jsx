@@ -24,9 +24,8 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         // Total Employees
-        const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
-        const empSnap = await getDocs(empQ);
-        const totalEmployees = empSnap.docs.filter(d => !d.data().isDeleted).length;
+        const empSnap = await getDocs(collection(db, 'users'));
+        const totalEmployees = empSnap.docs.filter(d => !d.data().isDeleted && d.data().email?.toLowerCase() !== 'growithmagdio@gmail.com' && d.data().role?.toLowerCase() !== 'admin').length;
 
         // Reports Today
         const today = new Date().toISOString().split('T')[0];

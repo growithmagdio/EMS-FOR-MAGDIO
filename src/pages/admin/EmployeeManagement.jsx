@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { softDeleteDocument } from '../../utils/dbUtils';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
@@ -24,24 +24,25 @@ export default function EmployeeManagement() {
   const [employeeRequests, setEmployeeRequests] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const fetchEmployees = async () => {
-    try {
-      setLoading(true);
-      const q = query(collection(db, 'users'), where('role', '==', 'Employee'));
-      const snapshot = await getDocs(q);
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       const emps = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(emp => !emp.isDeleted);
+        .filter(emp => 
+          !emp.isDeleted && 
+          emp.email?.toLowerCase() !== 'growithmagdio@gmail.com' &&
+          emp.role?.toLowerCase() !== 'admin' &&
+          emp.userType?.toLowerCase() !== 'admin'
+        );
       setEmployees(emps);
-    } catch (error) {
-      console.error("Error fetching employees", error);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      console.error("Error fetching employees in realtime:", error);
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    fetchEmployees();
+    return () => unsubscribe();
   }, []);
 
   const openEmployeeDetail = async (emp) => {

@@ -29,11 +29,10 @@ export default function ProjectManagement() {
       setProjects(projList);
 
       // Fetch Employees
-      const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
-      const empSnap = await getDocs(empQ);
+      const empSnap = await getDocs(collection(db, 'users'));
       setEmployees(empSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(emp => !emp.isDeleted && emp.isActive !== false)
+        .filter(emp => !emp.isDeleted && emp.isActive !== false && emp.email?.toLowerCase() !== 'growithmagdio@gmail.com' && emp.role?.toLowerCase() !== 'admin')
       );
 
       // Fetch Clients
