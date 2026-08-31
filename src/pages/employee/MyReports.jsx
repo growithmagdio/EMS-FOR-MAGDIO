@@ -16,7 +16,7 @@ export default function MyReports() {
   const [editingReport, setEditingReport] = useState(null);
   const today = new Date().toISOString().split('T')[0];
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   useEffect(() => {
     const fetchReports = async () => {

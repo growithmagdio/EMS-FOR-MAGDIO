@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase/config';
-import { collection, addDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { Trash2 } from 'lucide-react';
 import { softDeleteDocument } from '../../utils/dbUtils';
@@ -16,8 +16,8 @@ export default function Requests() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState(null);
   
-  const { register: registerLeave, handleSubmit: handleLeaveSubmit, reset: resetLeave, formState: { errors: leaveErrors } } = useForm();
-  const { register: registerWfh, handleSubmit: handleWfhSubmit, reset: resetWfh, formState: { errors: wfhErrors } } = useForm();
+  const { register: registerLeave, handleSubmit: handleLeaveSubmit, reset: resetLeave } = useForm();
+  const { register: registerWfh, handleSubmit: handleWfhSubmit, reset: resetWfh } = useForm();
   const [submitting, setSubmitting] = useState(false);
 
   const fetchRequests = async () => {
