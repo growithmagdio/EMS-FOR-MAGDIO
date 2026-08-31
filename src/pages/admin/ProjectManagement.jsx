@@ -17,32 +17,42 @@ export default function ProjectManagement() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
   const fetchProjectsAndEmployees = async () => {
+    // 1. Fetch Projects
     try {
-      // Fetch Projects
       const projSnap = await getDocs(collection(db, 'projects'));
       const projList = projSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(p => !p.isDeleted);
       setProjects(projList);
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+    }
 
-      // Fetch Employees
+    // 2. Fetch Employees
+    try {
       const empSnap = await getDocs(collection(db, 'users'));
-      setEmployees(empSnap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(emp => !emp.isDeleted && emp.isActive !== false && emp.email?.toLowerCase() !== 'growithmagdio@gmail.com' && emp.role?.toLowerCase() !== 'admin')
-      );
+      const empList = empSnap.docs
+        .map(doc => ({ id: doc.id, uid: doc.id, ...doc.data() }))
+        .filter(emp => !emp.isDeleted && emp.email?.toLowerCase() !== 'growithmagdio@gmail.com' && emp.role?.toLowerCase() !== 'admin');
+      console.log("PROJECT MANAGEMENT LOADED EMPLOYEES COUNT:", empList.length);
+      setEmployees(empList);
+    } catch (err) {
+      console.error("Error fetching employees for project assignment:", err);
+    }
 
-      // Fetch Clients
+    // 3. Fetch Clients
+    try {
       const clientsSnap = await getDocs(collection(db, 'clients'));
       setClients(clientsSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(c => !c.isDeleted));
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
+    } catch (err) {
+      console.error("Error fetching clients:", err);
     } finally {
       setLoading(false);
     }
@@ -53,10 +63,13 @@ export default function ProjectManagement() {
   }, []);
 
   const onSubmit = async (data) => {
+    if (isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       // Convert multi-select assignedEmployees to array if it's not already
       const assigned = Array.isArray(data.assignedEmployees) 
-        ? data.assignedEmployees 
+        ? data.assignedEmployees.filter(Boolean) 
         : (data.assignedEmployees ? [data.assignedEmployees] : []);
       
       const projectData = {
@@ -75,10 +88,10 @@ export default function ProjectManagement() {
 
       if (editingProject) {
         await updateDocument('projects', editingProject.id, projectData);
-        toast.success("Project updated successfully");
+        toast.success("Project updated successfully", { id: 'admin-project-toast' });
       } else {
         await addDocument('projects', projectData);
-        toast.success("Project created successfully");
+        toast.success("Project created successfully", { id: 'admin-project-toast' });
       }
       
       setIsModalOpen(false);
@@ -91,7 +104,9 @@ export default function ProjectManagement() {
         message: error?.message,
         error
       });
-      toast.error(error?.message || "Failed to save project");
+      toast.error(error?.message || "Failed to save project", { id: 'admin-project-toast' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -358,15 +373,17 @@ export default function ProjectManagement() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
-                  {editingProject ? 'Update Project' : 'Create Project'}
+                  {isSubmitting ? (editingProject ? 'Updating...' : 'Creating...') : (editingProject ? 'Update Project' : 'Create Project')}
                 </button>
               </div>
             </form>
