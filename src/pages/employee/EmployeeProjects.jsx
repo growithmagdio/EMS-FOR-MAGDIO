@@ -17,8 +17,9 @@ export default function EmployeeProjects() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register: reqRegister, handleSubmit: handleReqSubmit, reset: reqReset, formState: { errors: reqErrors } } = useForm();
+  const { register: reqRegister, handleSubmit: handleReqSubmit, reset: reqReset } = useForm();
   const { register: updRegister, handleSubmit: handleUpdSubmit, reset: updReset, setValue: updSetValue } = useForm();
 
   const fetchProjects = async () => {
@@ -39,7 +40,7 @@ export default function EmployeeProjects() {
       );
     } catch (error) {
       console.error("Error fetching projects:", error);
-      toast.error("Failed to load projects");
+      toast.error("Failed to load projects", { id: 'fetch-projects-error' });
     } finally {
       setLoading(false);
     }
@@ -50,57 +51,82 @@ export default function EmployeeProjects() {
   }, [currentUser]);
 
   const onRequestSubmit = async (data) => {
+    if (isSubmitting) return;
+
+    if (!currentUser) {
+      toast.error("User session expired. Please log in again.", { id: 'create-project-error' });
+      return;
+    }
+
     try {
-      let assigned = Array.isArray(data.requestedTeam) ? data.requestedTeam : [data.requestedTeam].filter(Boolean);
-      
+      setIsSubmitting(true);
+
+      let assigned = [];
+      if (Array.isArray(data.requestedTeam)) {
+        assigned = data.requestedTeam.filter(Boolean);
+      } else if (data.requestedTeam) {
+        assigned = [data.requestedTeam];
+      }
+
       // Auto-assign the employee who is creating it if they aren't in the list
       if (!assigned.includes(currentUser.uid)) {
         assigned.push(currentUser.uid);
       }
 
-      await addDocument('projects', {
-        name: data.name,
-        client: data.client || 'Internal',
-        description: data.description || '',
-        startDate: data.startDate,
-        deadline: data.deadline,
+      const projectData = {
+        name: data.name ? String(data.name).trim() : 'New Project',
+        client: data.client ? String(data.client).trim() : 'Internal Project',
+        description: data.description ? String(data.description).trim() : '',
+        startDate: data.startDate || new Date().toISOString().split('T')[0],
+        deadline: data.deadline || new Date().toISOString().split('T')[0],
         status: 'Planning',
         completionPercentage: 0,
         assignedEmployees: assigned,
         createdBy: currentUser.uid,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      console.log("EMPLOYEE PROJECT CREATE PAYLOAD", projectData);
+
+      await addDocument('projects', projectData);
       
-      toast.success("Project created successfully");
+      toast.success("Project created successfully", { id: 'create-project-success' });
       setIsRequestModalOpen(false);
       reqReset();
       await fetchProjects();
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to create project");
+      console.error("CREATE EMPLOYEE PROJECT ERROR:", error);
+      toast.error(error?.message || "Failed to create project", { id: 'create-project-error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const onUpdateSubmit = async (data) => {
+    if (isSubmitting) return;
     try {
+      setIsSubmitting(true);
       await updateDocument('projects', selectedProject.id, {
-        completionPercentage: Number(data.completionPercentage),
-        latestUpdate: data.latestUpdate,
+        completionPercentage: Number(data.completionPercentage || 0),
+        latestUpdate: data.latestUpdate ? String(data.latestUpdate).trim() : '',
         latestUpdateBy: currentUser.uid,
         latestUpdateAt: new Date().toISOString()
       });
-      toast.success("Project updated successfully");
+      toast.success("Project updated successfully", { id: 'update-project-success' });
       setIsUpdateModalOpen(false);
       updReset();
       setSelectedProject(null);
       // Update local state to reflect change instantly
       setProjects(projects.map(p => 
         p.id === selectedProject.id 
-          ? { ...p, completionPercentage: Number(data.completionPercentage), latestUpdate: data.latestUpdate }
+          ? { ...p, completionPercentage: Number(data.completionPercentage || 0), latestUpdate: data.latestUpdate }
           : p
       ));
     } catch (error) {
-      toast.error("Failed to update project");
+      console.error("UPDATE PROJECT ERROR:", error);
+      toast.error(error?.message || "Failed to update project", { id: 'update-project-error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -263,8 +289,10 @@ export default function EmployeeProjects() {
                 <p className="text-xs text-gray-500 mt-2">Select the team members for this project. You will be automatically assigned.</p>
               </div>
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsRequestModalOpen(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium">Create Project</button>
+                <button type="button" onClick={() => setIsRequestModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2">
+                  {isSubmitting ? 'Creating...' : 'Create Project'}
+                </button>
               </div>
             </form>
           </div>
