@@ -19,36 +19,37 @@ export default function ProjectManagement() {
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
+  const fetchProjectsAndEmployees = async () => {
+    try {
+      // Fetch Projects
+      const projSnap = await getDocs(collection(db, 'projects'));
+      const projList = projSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(p => !p.isDeleted);
+      setProjects(projList);
+
+      // Fetch Employees
+      const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
+      const empSnap = await getDocs(empQ);
+      setEmployees(empSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(emp => !emp.isDeleted && emp.isActive !== false)
+      );
+
+      // Fetch Clients
+      const clientsSnap = await getDocs(collection(db, 'clients'));
+      setClients(clientsSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(c => !c.isDeleted));
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProjectsAndEmployees = async () => {
-      try {
-        // Fetch Projects
-        const projSnap = await getDocs(collection(db, 'projects'));
-        const projList = projSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(p => !p.isDeleted);
-        setProjects(projList);
-
-        // Fetch Employees
-        const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
-        const empSnap = await getDocs(empQ);
-        setEmployees(empSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(emp => !emp.isDeleted && emp.isActive !== false)
-        );
-
-        // Fetch Clients
-        const clientsSnap = await getDocs(collection(db, 'clients'));
-        setClients(clientsSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(c => !c.isDeleted));
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProjectsAndEmployees();
   }, []);
 
@@ -80,7 +81,7 @@ export default function ProjectManagement() {
       setIsModalOpen(false);
       reset();
       setEditingProject(null);
-      window.location.reload();
+      await fetchProjectsAndEmployees();
     } catch (error) {
       console.error("Error saving project:", error);
       toast.error("Failed to save project");

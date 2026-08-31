@@ -21,31 +21,32 @@ export default function EmployeeProjects() {
   const { register: reqRegister, handleSubmit: handleReqSubmit, reset: reqReset, formState: { errors: reqErrors } } = useForm();
   const { register: updRegister, handleSubmit: handleUpdSubmit, reset: updReset, setValue: updSetValue } = useForm();
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!currentUser) return;
-      try {
-        const q = query(collection(db, 'projects'), where('assignedEmployees', 'array-contains', currentUser.uid));
-        const snapshot = await getDocs(q);
-        const projList = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(p => !p.isDeleted);
-        setProjects(projList);
+  const fetchProjects = async () => {
+    if (!currentUser) return;
+    try {
+      const q = query(collection(db, 'projects'), where('assignedEmployees', 'array-contains', currentUser.uid));
+      const snapshot = await getDocs(q);
+      const projList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(p => !p.isDeleted);
+      setProjects(projList);
 
-        // Fetch all employees for request form
-        const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
-        const empSnap = await getDocs(empQ);
-        setEmployees(empSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(emp => !emp.isDeleted && emp.isActive !== false)
-        );
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-        toast.error("Failed to load projects");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Fetch all employees for request form
+      const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
+      const empSnap = await getDocs(empQ);
+      setEmployees(empSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(emp => !emp.isDeleted && emp.isActive !== false)
+      );
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast.error("Failed to load projects");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProjects();
   }, [currentUser]);
 
@@ -74,7 +75,7 @@ export default function EmployeeProjects() {
       toast.success("Project created successfully");
       setIsRequestModalOpen(false);
       reqReset();
-      window.location.reload(); // Refresh to show new project
+      await fetchProjects();
     } catch (error) {
       console.error(error);
       toast.error("Failed to create project");

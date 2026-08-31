@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase/config';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { Folder, CheckSquare, CheckCircle, Send } from 'lucide-react';
 
 export default function EmployeeDashboard() {
   const { userData, currentUser } = useAuth();
@@ -19,13 +20,21 @@ export default function EmployeeDashboard() {
   const [checking, setChecking] = useState(true);
   const [assignedTasks, setAssignedTasks] = useState([]);
 
+  const [stats, setStats] = useState({
+    assignedProjects: 0,
+    pendingTasks: 0,
+    completedTasks: 0,
+    pendingRequests: 0
+  });
+
   const completionPercentage = watch("completionPercentage");
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    const checkSubmission = async () => {
+    const fetchData = async () => {
       if (!currentUser) return;
       try {
+        // 1. Check Today's Report
         const q = query(
           collection(db, 'dailyReports'),
           where('employeeId', '==', currentUser.uid),
@@ -37,33 +46,72 @@ export default function EmployeeDashboard() {
           setExistingReport({ id: docData.id, ...docData.data() });
         }
 
-        // Fetch Assigned Tasks
+        // 2. Fetch Assigned Tasks
         const tasksQ = query(
           collection(db, 'tasks'),
-          where('assignedEmployeeId', '==', currentUser.uid),
-          where('status', 'in', ['To Do', 'In Progress', 'Review'])
+          where('assignedEmployeeId', '==', currentUser.uid)
         );
         const tasksSnap = await getDocs(tasksQ);
-        setAssignedTasks(tasksSnap.docs.map(t => ({ id: t.id, ...t.data() })));
+        const allTasks = tasksSnap.docs.map(t => ({ id: t.id, ...t.data() })).filter(t => !t.isDeleted);
+        
+        const activeTasks = allTasks.filter(t => t.status !== 'Done');
+        const doneTasks = allTasks.filter(t => t.status === 'Done');
+        setAssignedTasks(activeTasks);
+
+        // 3. Fetch Assigned Projects
+        const projQ = query(
+          collection(db, 'projects'),
+          where('assignedEmployees', 'array-contains', currentUser.uid)
+        );
+        const projSnap = await getDocs(projQ);
+        const activeProjects = projSnap.docs.filter(p => !p.data().isDeleted).length;
+
+        // 4. Fetch Pending Requests
+        const leaveQ = query(
+          collection(db, 'leaveRequests'),
+          where('employeeId', '==', currentUser.uid),
+          where('status', '==', 'Pending')
+        );
+        const leaveSnap = await getDocs(leaveQ);
+
+        const wfhQ = query(
+          collection(db, 'wfhRequests'),
+          where('employeeId', '==', currentUser.uid),
+          where('status', '==', 'Pending')
+        );
+        const wfhSnap = await getDocs(wfhQ);
+
+        const pendingReqsCount = leaveSnap.size + wfhSnap.size;
+
+        setStats({
+          assignedProjects: activeProjects,
+          pendingTasks: activeTasks.length,
+          completedTasks: doneTasks.length,
+          pendingRequests: pendingReqsCount
+        });
+
       } catch (error) {
         console.error("Error checking submission or tasks:", error);
       } finally {
         setChecking(false);
       }
     };
-    checkSubmission();
+    fetchData();
   }, [currentUser, today]);
 
   const onSubmit = async (data) => {
     try {
       setLoading(true);
+      const completionNum = Number(data.completionPercentage);
+      const timeNum = Number(data.timeTaken);
+
       if (existingReport) {
         await updateDoc(doc(db, 'dailyReports', existingReport.id), {
           taskId: data.taskId || null,
           taskName: data.taskName,
           taskDescription: data.taskDescription,
-          completionPercentage: Number(data.completionPercentage),
-          timeTaken: Number(data.timeTaken),
+          completionPercentage: completionNum,
+          timeTaken: timeNum,
           status: data.status,
           blockers: data.blockers || '',
           tomorrowPlan: data.tomorrowPlan || '',
@@ -71,12 +119,23 @@ export default function EmployeeDashboard() {
           updatedAt: new Date().toISOString(),
           version: (existingReport.version || 1) + 1
         });
+
+        // Also sync linked task status if selected
+        if (data.taskId) {
+          await updateDoc(doc(db, 'tasks', data.taskId), {
+            progressPercentage: completionNum,
+            status: completionNum === 100 ? 'Done' : (data.status === 'Completed' ? 'Done' : data.status),
+            latestUpdate: data.taskDescription,
+            updatedAt: new Date().toISOString()
+          });
+        }
+
         toast.success("Report updated successfully!");
         setExistingReport(prev => ({ 
           ...prev, 
           ...data, 
-          completionPercentage: Number(data.completionPercentage),
-          timeTaken: Number(data.timeTaken),
+          completionPercentage: completionNum,
+          timeTaken: timeNum,
           version: (prev.version || 1) + 1, 
           updatedAt: new Date().toISOString() 
         }));
@@ -90,8 +149,8 @@ export default function EmployeeDashboard() {
           taskId: data.taskId || null,
           taskName: data.taskName,
           taskDescription: data.taskDescription,
-          completionPercentage: Number(data.completionPercentage),
-          timeTaken: Number(data.timeTaken),
+          completionPercentage: completionNum,
+          timeTaken: timeNum,
           status: data.status,
           blockers: data.blockers || '',
           tomorrowPlan: data.tomorrowPlan || '',
@@ -102,6 +161,17 @@ export default function EmployeeDashboard() {
           version: 1
         };
         const docRef = await addDoc(collection(db, 'dailyReports'), newReport);
+
+        // Also sync linked task status if selected
+        if (data.taskId) {
+          await updateDoc(doc(db, 'tasks', data.taskId), {
+            progressPercentage: completionNum,
+            status: completionNum === 100 ? 'Done' : (data.status === 'Completed' ? 'Done' : data.status),
+            latestUpdate: data.taskDescription,
+            updatedAt: new Date().toISOString()
+          });
+        }
+
         toast.success("Report submitted successfully!");
         setExistingReport({ id: docRef.id, ...newReport });
         setIsEditing(false);
@@ -116,8 +186,15 @@ export default function EmployeeDashboard() {
   };
 
   if (checking) {
-    return <div className="animate-pulse flex space-x-4"><div className="flex-1 space-y-6 py-1"><div className="h-2 bg-gray-200 rounded"></div></div></div>;
+    return <div className="flex justify-center p-12"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>;
   }
+
+  const statCards = [
+    { label: 'Assigned Projects', value: stats.assignedProjects, icon: Folder, color: 'bg-blue-50 text-blue-600 border-blue-200' },
+    { label: 'Pending Tasks', value: stats.pendingTasks, icon: CheckSquare, color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    { label: 'Completed Tasks', value: stats.completedTasks, icon: CheckCircle, color: 'bg-green-50 text-green-600 border-green-200' },
+    { label: 'Pending Requests', value: stats.pendingRequests, icon: Send, color: 'bg-purple-50 text-purple-600 border-purple-200' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -125,19 +202,39 @@ export default function EmployeeDashboard() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Welcome, {userData?.name}</h1>
-          <p className="text-gray-500 mt-1">Here is your daily dashboard.</p>
+          <p className="text-gray-500 mt-1">Here is your active work dashboard and daily report center.</p>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium border border-blue-100">
-            Role: {userData?.role}
+            Role: {userData?.role || 'Employee'}
           </div>
           <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-medium border border-indigo-100">
-            Department: {userData?.department}
+            Department: {userData?.department || 'General'}
           </div>
           <div className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-200">
             Date: {new Date().toLocaleDateString()}
           </div>
         </div>
+      </div>
+
+      {/* Quick Stats Grid (Requirement #18) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <div key={i} className={`bg-white rounded-2xl p-6 shadow-sm border-2 ${card.color} hover:shadow-md transition-shadow`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">{card.label}</p>
+                  <h3 className="text-3xl font-bold text-gray-900">{card.value}</h3>
+                </div>
+                <div className="p-3 rounded-xl bg-white/60 backdrop-blur-sm">
+                  <Icon className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Report Card */}
@@ -161,6 +258,7 @@ export default function EmployeeDashboard() {
               <button 
                 onClick={() => {
                   reset({
+                    taskId: existingReport.taskId || '',
                     taskName: existingReport.taskName,
                     taskDescription: existingReport.taskDescription,
                     completionPercentage: existingReport.completionPercentage,
@@ -192,7 +290,7 @@ export default function EmployeeDashboard() {
                     const selectedTask = assignedTasks.find(t => t.id === e.target.value);
                     if (selectedTask) {
                       setValue("taskName", selectedTask.title);
-                      setValue("taskDescription", selectedTask.description);
+                      setValue("taskDescription", selectedTask.description || '');
                     }
                   }}
                 >
@@ -210,7 +308,7 @@ export default function EmployeeDashboard() {
                 <input
                   {...register("taskName", { required: "This field is required" })}
                   type="text"
-                  placeholder="E.g. Employee Dashboard Development"
+                  placeholder="E.g. Frontend Header Component"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 />
                 {errors.taskName && <p className="mt-1 text-sm text-red-600">{errors.taskName.message}</p>}
@@ -255,8 +353,8 @@ export default function EmployeeDashboard() {
                   {...register("status", { required: "This field is required" })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-white"
                 >
-                  <option value="Not Started">Not Started</option>
                   <option value="In Progress">In Progress</option>
+                  <option value="Review">Review</option>
                   <option value="Completed">Completed</option>
                   <option value="Blocked">Blocked</option>
                 </select>

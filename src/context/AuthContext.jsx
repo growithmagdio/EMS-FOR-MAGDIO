@@ -16,7 +16,6 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 const MASTER_ADMIN_EMAIL = "growithmagdio@gmail.com";
-const MASTER_ADMIN_PASSWORD = "magdio123";
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -33,13 +32,19 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      const assignedRole = email.toLowerCase() === MASTER_ADMIN_EMAIL ? 'Admin' : (role || 'Employee');
+
       const userDoc = {
         uid: user.uid,
         name,
         email,
-        role: email.toLowerCase() === MASTER_ADMIN_EMAIL ? 'Admin' : (role || 'Employee'),
-        department,
-        userType: email.toLowerCase() === MASTER_ADMIN_EMAIL ? 'Admin' : (role || 'Employee'),
+        role: assignedRole,
+        department: department || 'Engineering',
+        designation: assignedRole === 'Admin' ? 'Administrator' : `${department || 'General'} Specialist`,
+        phone: '',
+        joiningDate: new Date().toISOString().split('T')[0],
+        leaveBalance: 20,
+        userType: assignedRole,
         isActive: true,
         createdAt: new Date().toISOString()
       };
@@ -47,7 +52,7 @@ export const AuthProvider = ({ children }) => {
       try {
         await setDoc(doc(db, 'users', user.uid), userDoc);
       } catch (err) {
-        console.warn("Firestore permission warning:", err);
+        console.warn("Firestore user doc write warning:", err);
       }
 
       setUserData(userDoc);
@@ -62,44 +67,24 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const formattedEmail = email.trim().toLowerCase();
 
-    // Instant Master Admin Authentication
-    if (formattedEmail === MASTER_ADMIN_EMAIL && password === MASTER_ADMIN_PASSWORD) {
-      const masterUser = {
-        uid: "magdio-master-admin-uid",
-        email: MASTER_ADMIN_EMAIL,
-        displayName: "MAGDIO Admin"
-      };
-      const masterUserData = {
-        uid: "magdio-master-admin-uid",
-        name: "MAGDIO Admin",
-        email: MASTER_ADMIN_EMAIL,
-        role: "Admin",
-        department: "Management",
-        userType: "Admin",
-        isActive: true,
-        createdAt: new Date().toISOString()
-      };
-
-      localStorage.setItem("magdio_master_admin", "true");
-      setCurrentUser(masterUser);
-      setUserData(masterUserData);
-
-      // Background Firebase Sync if configured
-      if (isFirebaseConfigured) {
-        signInWithEmailAndPassword(auth, email, password).catch(() => {
-          createUserWithEmailAndPassword(auth, email, password).catch(() => {});
-        });
-      }
-      return masterUser;
-    }
-
-    // Standard Firebase Login
     if (!isFirebaseConfigured) {
       toast.error('Firebase is not configured. Please add your credentials to .env file.');
       throw new Error('Firebase is not configured.');
     }
+
     try {
-      return await signInWithEmailAndPassword(auth, email, password);
+      // For Master Admin email, if sign-in fails because account isn't in Auth yet, auto-create it
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, formattedEmail, password);
+      } catch (err) {
+        if (formattedEmail === MASTER_ADMIN_EMAIL && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
+          userCredential = await createUserWithEmailAndPassword(auth, formattedEmail, password);
+        } else {
+          throw err;
+        }
+      }
+      return userCredential.user;
     } catch (error) {
       toast.error('Invalid email or password');
       throw error;
@@ -108,7 +93,6 @@ export const AuthProvider = ({ children }) => {
 
   // Logout
   const logout = async () => {
-    localStorage.removeItem("magdio_master_admin");
     try {
       if (isFirebaseConfigured) {
         await signOut(auth);
@@ -124,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   // Google Sign-in
   const loginWithGoogle = async (role = 'Employee', department = 'Engineering') => {
     if (!isFirebaseConfigured) {
-      toast.error('Firebase is not configured. Please add your credentials to .env file.');
+      toast.error('Firebase is not configured.');
       throw new Error('Firebase is not configured.');
     }
     try {
@@ -140,14 +124,22 @@ export const AuthProvider = ({ children }) => {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           userDoc = docSnap.data();
-          if (isAdmin) userDoc.role = 'Admin';
+          if (isAdmin && userDoc.role !== 'Admin') {
+            userDoc.role = 'Admin';
+            userDoc.userType = 'Admin';
+            await setDoc(docRef, { role: 'Admin', userType: 'Admin' }, { merge: true });
+          }
         } else {
           userDoc = {
             uid: user.uid,
             name: user.displayName || 'Google User',
             email: user.email,
             role: assignedRole,
-            department,
+            department: department || 'Engineering',
+            designation: assignedRole === 'Admin' ? 'Administrator' : `${department || 'General'} Specialist`,
+            phone: '',
+            joiningDate: new Date().toISOString().split('T')[0],
+            leaveBalance: 20,
             userType: assignedRole,
             isActive: true,
             createdAt: new Date().toISOString()
@@ -160,14 +152,10 @@ export const AuthProvider = ({ children }) => {
           name: user.displayName || 'Google User',
           email: user.email,
           role: assignedRole,
-          department,
+          department: department || 'Engineering',
           userType: assignedRole,
           isActive: true
         };
-      }
-      
-      if (isAdmin) {
-        localStorage.setItem("magdio_master_admin", "true");
       }
 
       setUserData(userDoc);
@@ -179,28 +167,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Check local storage for persistent Master Admin session
-    if (localStorage.getItem("magdio_master_admin") === "true") {
-      const masterUser = {
-        uid: "magdio-master-admin-uid",
-        email: MASTER_ADMIN_EMAIL,
-        displayName: "MAGDIO Admin"
-      };
-      const masterUserData = {
-        uid: "magdio-master-admin-uid",
-        name: "MAGDIO Admin",
-        email: MASTER_ADMIN_EMAIL,
-        role: "Admin",
-        department: "Management",
-        userType: "Admin",
-        isActive: true
-      };
-      setCurrentUser(masterUser);
-      setUserData(masterUserData);
-      setLoading(false);
-      return;
-    }
-
     if (!isFirebaseConfigured) {
       setLoading(false);
       return;
@@ -219,6 +185,7 @@ export const AuthProvider = ({ children }) => {
               if (user.email.toLowerCase() === MASTER_ADMIN_EMAIL) {
                 if (data.role !== "Admin") {
                   data.role = "Admin";
+                  data.userType = "Admin";
                   await setDoc(docRef, { role: "Admin", userType: "Admin" }, { merge: true });
                 }
               }
@@ -232,7 +199,11 @@ export const AuthProvider = ({ children }) => {
                 name: name,
                 email: user.email,
                 role: role,
-                department: "General",
+                department: "Management",
+                designation: isAdmin ? "Administrator" : "Specialist",
+                phone: '',
+                joiningDate: new Date().toISOString().split('T')[0],
+                leaveBalance: 20,
                 userType: role,
                 isActive: true,
                 createdAt: new Date().toISOString()

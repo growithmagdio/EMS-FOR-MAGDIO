@@ -9,7 +9,7 @@ import { softDeleteDocument } from '../../utils/dbUtils';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 
 export default function Requests() {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [activeTab, setActiveTab] = useState('leave'); // 'leave' or 'wfh'
   const [requests, setRequests] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -71,6 +71,7 @@ export default function Requests() {
       setSubmitting(true);
       await addDoc(collection(db, 'leaveRequests'), {
         employeeId: currentUser.uid,
+        employeeName: userData?.name || currentUser.displayName || 'Employee',
         fromDate: data.fromDate,
         toDate: data.toDate,
         reason: data.reason,
@@ -92,6 +93,7 @@ export default function Requests() {
       setSubmitting(true);
       await addDoc(collection(db, 'wfhRequests'), {
         employeeId: currentUser.uid,
+        employeeName: userData?.name || currentUser.displayName || 'Employee',
         date: data.date,
         reason: data.reason,
         status: 'Pending',

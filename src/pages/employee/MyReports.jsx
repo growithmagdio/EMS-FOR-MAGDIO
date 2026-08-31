@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { addDocument, updateDocument } from '../../utils/dbUtils';
 
 export default function MyReports() {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [reports, setReports] = useState([]);
   const [assignedTasks, setAssignedTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ export default function MyReports() {
       
       const reportData = {
         employeeId: currentUser.uid,
-        employeeName: currentUser.displayName || 'Employee',
+        employeeName: userData?.name || currentUser.displayName || 'Employee',
         reportDate: today,
         taskId: task.id,
         taskName: task.title,

@@ -20,36 +20,37 @@ export default function TaskManagement() {
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
+  const fetchData = async () => {
+    try {
+      // Fetch Tasks
+      const tasksSnap = await getDocs(collection(db, 'tasks'));
+      const tasksList = tasksSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(t => !t.isDeleted);
+      setTasks(tasksList);
+
+      // Fetch Projects
+      const projSnap = await getDocs(collection(db, 'projects'));
+      setProjects(projSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(p => !p.isDeleted));
+
+      // Fetch Employees
+      const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
+      const empSnap = await getDocs(empQ);
+      setEmployees(empSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(emp => !emp.isDeleted && emp.isActive !== false)
+      );
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch Tasks
-        const tasksSnap = await getDocs(collection(db, 'tasks'));
-        const tasksList = tasksSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(t => !t.isDeleted);
-        setTasks(tasksList);
-
-        // Fetch Projects
-        const projSnap = await getDocs(collection(db, 'projects'));
-        setProjects(projSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(p => !p.isDeleted));
-
-        // Fetch Employees
-        const empQ = query(collection(db, 'users'), where('role', '==', 'Employee'));
-        const empSnap = await getDocs(empQ);
-        setEmployees(empSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(emp => !emp.isDeleted && emp.isActive !== false)
-        );
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to load data");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -85,7 +86,7 @@ export default function TaskManagement() {
       setIsModalOpen(false);
       reset();
       setEditingTask(null);
-      window.location.reload();
+      await fetchData();
     } catch (err) {
       console.error("Error saving task:", err);
       toast.error("Failed to save task");
