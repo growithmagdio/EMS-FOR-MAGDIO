@@ -19,10 +19,10 @@ export default function EmployeeTasks() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register: ptRegister, handleSubmit: ptSubmit, reset: ptReset, setValue: ptSetValue, formState: { errors: ptErrors } } = useForm();
+  const { register: ptRegister, handleSubmit: ptSubmit, reset: ptReset, setValue: ptSetValue } = useForm();
   const { register: updRegister, handleSubmit: updSubmit, reset: updReset, setValue: updSetValue } = useForm();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function EmployeeTasks() {
         setTasks(tasksList);
       } catch (error) {
         console.error("Error fetching tasks:", error);
-        toast.error("Failed to load tasks");
+        toast.error("Failed to load tasks", { id: 'fetch-tasks-error' });
       } finally {
         setLoading(false);
       }
@@ -47,56 +47,85 @@ export default function EmployeeTasks() {
   }, [currentUser]);
 
   const handlePersonalTaskSubmit = async (data) => {
+    if (isSubmitting) return;
+
+    console.log("PERSONAL TASK SUBMIT START", Date.now());
+    console.log("AUTH USER", currentUser);
+
+    if (!currentUser) {
+      toast.error("User session expired. Please log in again.", { id: 'personal-task-error' });
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
+
+      const titleTrimmed = (data.title || '').trim();
+      const descTrimmed = (data.description || '').trim();
+      const dueDateVal = data.dueDate || new Date().toISOString().split('T')[0];
+
       const taskData = {
-        title: data.title,
-        description: data.description,
-        dueDate: data.dueDate,
-        priority: data.priority,
+        title: titleTrimmed || 'Personal Task',
+        description: descTrimmed,
+        dueDate: dueDateVal,
+        priority: data.priority || 'Medium',
         status: data.status || 'To Do',
         progressPercentage: Number(data.progressPercentage || 0),
         isPersonal: true,
         assignedEmployeeId: currentUser.uid,
-        assignedEmployeeName: currentUser.displayName || 'Me',
+        assignedEmployeeName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Me',
         projectName: 'Personal Task',
         projectId: 'Personal',
         assignedByName: 'Self'
       };
 
+      console.log("PERSONAL TASK PAYLOAD", taskData);
+      console.log("PERSONAL TASK FIRESTORE WRITE", Date.now());
+
       if (editingTask) {
         await updateDocument('tasks', editingTask.id, taskData);
-        toast.success("Personal task updated");
+        toast.success("Personal task updated", { id: 'personal-task-success' });
         setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...taskData } : t));
       } else {
         const docRef = await addDocument('tasks', taskData);
-        toast.success("Personal task created");
+        toast.success("Personal task created", { id: 'personal-task-success' });
         setTasks([...tasks, { id: docRef.id, ...taskData }]);
       }
       setIsPersonalTaskModalOpen(false);
       ptReset();
       setEditingTask(null);
     } catch (err) {
-      toast.error("Failed to save personal task");
+      console.error("PERSONAL TASK ERROR:", err);
+      console.error("error code:", err?.code);
+      console.error("error message:", err?.message);
+      toast.error(err?.message || "Failed to save personal task", { id: 'personal-task-error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateTaskSubmit = async (data) => {
+    if (isSubmitting) return;
     try {
+      setIsSubmitting(true);
       const updates = {
         status: data.status,
-        progressPercentage: Number(data.progressPercentage),
-        latestUpdate: data.latestUpdate,
-        notes: data.latestUpdate, // Keep notes synced with latest update
+        progressPercentage: Number(data.progressPercentage || 0),
+        latestUpdate: data.latestUpdate || '',
+        notes: data.latestUpdate || '', // Keep notes synced with latest update
         updatedAt: new Date().toISOString()
       };
       await updateDocument('tasks', selectedTask.id, updates);
-      toast.success("Task updated");
+      toast.success("Task updated", { id: 'update-task-success' });
       setTasks(tasks.map(t => t.id === selectedTask.id ? { ...t, ...updates } : t));
       setIsUpdateModalOpen(false);
       updReset();
       setSelectedTask(null);
     } catch (err) {
-      toast.error("Failed to update task");
+      console.error("Update task error:", err);
+      toast.error(err?.message || "Failed to update task", { id: 'update-task-error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -288,8 +317,10 @@ export default function EmployeeTasks() {
                 </div>
               </div>
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsPersonalTaskModalOpen(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium">{editingTask ? 'Update' : 'Create'}</button>
+                <button type="button" onClick={() => setIsPersonalTaskModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2">
+                  {isSubmitting ? (editingTask ? 'Updating...' : 'Creating...') : (editingTask ? 'Update' : 'Create')}
+                </button>
               </div>
             </form>
           </div>
